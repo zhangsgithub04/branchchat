@@ -1,0 +1,5 @@
+{
+  "name": "BranchChat Visualizer",
+  "description": "A chat application that visualizes conversation paths as an interactive tree, allowing users to branch out and explore different dialogue trajectories.",
+  "requestFramePermissions": []
+}
