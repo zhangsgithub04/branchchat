@@ -26,6 +26,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authRegistrationKey, setAuthRegistrationKey] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -220,13 +221,20 @@ export default function App() {
         throw new Error('Password must be at least 6 characters.');
       }
 
+      if (authMode === 'signup' && !authRegistrationKey.trim()) {
+        throw new Error('Registration secret key is required for sign up.');
+      }
+
       const endpoint = authMode === 'signin' ? '/api/auth/signin' : '/api/auth/signup';
       const endpointUrl = new URL(endpoint, window.location.origin).toString();
+      const payload = authMode === 'signup'
+        ? { email: normalizedEmail, password: authPassword, registrationKey: authRegistrationKey.trim() }
+        : { email: normalizedEmail, password: authPassword };
 
       const response = await fetch(endpointUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: normalizedEmail, password: authPassword }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -239,6 +247,7 @@ export default function App() {
       setUser(data.user);
       setAuthEmail(normalizedEmail);
       setAuthPassword('');
+      setAuthRegistrationKey('');
       setAuthError(null);
     } catch (error: any) {
       const message = typeof error?.message === 'string' ? error.message : 'Authentication failed';
@@ -489,6 +498,16 @@ export default function App() {
               placeholder="Password (min 6 chars)"
               className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             />
+
+            {authMode === 'signup' && (
+              <input
+                type="password"
+                value={authRegistrationKey}
+                onChange={(event) => setAuthRegistrationKey(event.target.value)}
+                placeholder="Registration secret key"
+                className="w-full bg-white border border-slate-200 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            )}
 
             {authError && <p className="text-xs text-rose-600">{authError}</p>}
 

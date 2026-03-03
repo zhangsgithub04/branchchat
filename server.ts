@@ -267,6 +267,17 @@ async function startServer() {
     try {
       const email = sanitizeEmail(req.body?.email);
       const password = req.body?.password;
+      const registrationKey = typeof req.body?.registrationKey === "string" ? req.body.registrationKey.trim() : "";
+      const requiredRegistrationKey =
+        process.env.REGISTRATION_SECRETE_KEY || process.env.REGISTRATION_SECRET_KEY || "";
+
+      if (!requiredRegistrationKey) {
+        return res.status(500).json({ error: "Registration key is not configured on server." });
+      }
+
+      if (!registrationKey || registrationKey !== requiredRegistrationKey) {
+        return res.status(403).json({ error: "Invalid registration secret key." });
+      }
 
       if (!email || !validatePassword(password)) {
         return res.status(400).json({ error: "Email and password (min 6 chars) are required." });
