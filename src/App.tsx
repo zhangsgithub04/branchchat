@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { MessageNode, ConversationState, Suggestion, AIProvider, AuthUser, SessionSummary } from './types';
 import { ChatInterface } from './components/ChatInterface';
@@ -7,6 +9,8 @@ import { analyzeLearningStyle } from './utils/learningAnalysis';
 import { GitBranch, Layers, MessageSquare, Info } from 'lucide-react';
 
 const AUTH_TOKEN_KEY = 'branchchat_auth_token';
+const RAW_API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || '').trim();
+const API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, '');
 const EMPTY_STATE: ConversationState = {
   nodes: {},
   activeNodeId: null,
@@ -15,13 +19,42 @@ const EMPTY_STATE: ConversationState = {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function apiUrl(path: string) {
+  return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+}
+
+async function parseApiError(response: Response, fallback: string) {
+  try {
+    const data = await response.json();
+    if (data && typeof data.error === 'string' && data.error.trim()) {
+      return data.error;
+    }
+  } catch {
+  }
+
+  return fallback;
+}
+
+async function parseJsonSafely(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const [state, setState] = useState<ConversationState>(EMPTY_STATE);
   const [isTyping, setIsTyping] = useState(false);
   const [showLinks, setShowLinks] = useState(true);
   const [provider, setProvider] = useState<AIProvider>('gemini');
 
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem(AUTH_TOKEN_KEY));
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    return localStorage.getItem(AUTH_TOKEN_KEY);
+  });
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [authEmail, setAuthEmail] = useState('');
@@ -46,7 +79,7 @@ export default function App() {
       headers.set('Content-Type', 'application/json');
     }
 
-    const response = await fetch(url, {
+    const response = await fetch(apiUrl(url), {
       ...init,
       headers,
     });
@@ -54,8 +87,7 @@ export default function App() {
     if (!response.ok) {
       let errorMessage = 'Request failed';
       try {
-        const data = await response.json();
-        errorMessage = data.error || errorMessage;
+        errorMessage = await parseApiError(response, errorMessage);
       } catch {
       }
       throw new Error(errorMessage);
@@ -157,7 +189,7 @@ export default function App() {
       }
 
       try {
-        const response = await fetch('/api/auth/me', {
+        const response = await fetch(apiUrl('/api/auth/me'), {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -226,20 +258,19 @@ export default function App() {
       }
 
       const endpoint = authMode === 'signin' ? '/api/auth/signin' : '/api/auth/signup';
-      const endpointUrl = new URL(endpoint, window.location.origin).toString();
       const payload = authMode === 'signup'
         ? { email: normalizedEmail, password: authPassword, registrationKey: authRegistrationKey.trim() }
         : { email: normalizedEmail, password: authPassword };
 
-      const response = await fetch(endpointUrl, {
+      const response = await fetch(apiUrl(endpoint), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const data = await parseJsonSafely(response);
       if (!response.ok) {
-        throw new Error(data.error || 'Authentication failed');
+        throw new Error((data && data.error) || (await parseApiError(response, 'Authentication failed')));
       }
 
       localStorage.setItem(AUTH_TOKEN_KEY, data.token);
@@ -276,15 +307,15 @@ export default function App() {
         throw new Error('Enter a new password with at least 6 characters.');
       }
 
-      const response = await fetch(new URL('/api/auth/reset-password', window.location.origin).toString(), {
+      const response = await fetch(apiUrl('/api/auth/reset-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: normalizedEmail, password: authPassword }),
       });
 
-      const data = await response.json();
+      const data = await parseJsonSafely(response);
       if (!response.ok) {
-        throw new Error(data.error || 'Reset password failed');
+        throw new Error((data && data.error) || (await parseApiError(response, 'Reset password failed')));
       }
 
       localStorage.setItem(AUTH_TOKEN_KEY, data.token);
@@ -301,7 +332,7 @@ export default function App() {
   const handleLogout = async () => {
     try {
       if (token) {
-        await fetch('/api/auth/logout', {
+        await fetch(apiUrl('/api/auth/logout'), {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         });

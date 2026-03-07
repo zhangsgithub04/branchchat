@@ -43,7 +43,7 @@ export interface ConversationState {
 }
 
 export interface AuthUser {
-  id: number;
+  id: string;
   email: string;
 }
 

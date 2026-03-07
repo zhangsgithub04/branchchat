@@ -1,31 +1,39 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# BranchChat (Next.js + MongoDB)
 
-# Run and deploy your AI Studio app
+BranchChat is a full-stack Next.js application for branching AI conversations, visual tree navigation, and learning-style insights.
 
-This contains everything you need to run your app locally.
+## Tech Stack
 
-View your app in AI Studio: https://ai.studio/apps/0eae8b09-c83e-4900-be28-8ffce9a35208
+- Next.js App Router (frontend + API routes)
+- MongoDB for users, auth sessions, and saved chat sessions
+- Gemini and OpenAI provider support through server-side API proxies
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+Prerequisites:
+- Node.js 20+
+- MongoDB Atlas (or another MongoDB instance)
 
 1. Install dependencies:
    `npm install`
-2. Set one or both keys in [.env.local](.env.local):
-   - `GEMINI_API_KEY=...` or `AI_STUDIO_API_KEY=...` for AI Studio (Gemini)
-   - `OPENAI_API_KEY=...` for OpenAI
-   - Optional model overrides: `GEMINI_MODEL` and `OPENAI_MODEL`
-3. In the app header, use the `Provider` selector to switch between AI Studio and OpenAI.
-4. Run the app:
+2. Create `.env.local` using `.env.example` and set:
+   - `MONGODB_URI`
+   - `MONGODB_DB_NAME` (optional, defaults to `branchchat`)
+   - `REGISTRATION_SECRET_KEY`
+   - `GEMINI_API_KEY` and/or `OPENAI_API_KEY`
+3. Start development server:
    `npm run dev`
+4. Open:
+   `http://localhost:3000`
 
-## Authentication and Sessions
+## API Endpoints
 
-- The app now includes `Sign in` and `Sign up` flows.
-- Login session is stored in browser localStorage and validated by `/api/auth/me`.
-- Conversation sessions are persisted on the server (`branchchat.db`) and shown in `Session History`.
-- You can create, select, and resume whole prior sessions from the right panel.
+- Auth: `/api/auth/signup`, `/api/auth/signin`, `/api/auth/reset-password`, `/api/auth/me`, `/api/auth/logout`
+- Sessions: `/api/sessions`, `/api/sessions/:id`
+- Chat proxy: `/api/chat`
+
+## Deployment Notes
+
+- Build with: `npm run build`
+- Start with: `npm run start`
+- If frontend and backend are deployed on different origins, set `NEXT_PUBLIC_API_BASE_URL`.
