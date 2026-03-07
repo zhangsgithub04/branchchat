@@ -26,10 +26,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/sessions/[id]/route.js"
     ],
-    "/api/chat/route": [
+    "/api/auth/logout/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/chat/route.js"
+      "static/chunks/app/api/auth/logout/route.js"
+    ],
+    "/api/auth/signup/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/auth/signup/route.js"
     ]
   }
 }

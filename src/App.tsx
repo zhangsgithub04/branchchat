@@ -43,6 +43,21 @@ async function parseJsonSafely(response: Response) {
   }
 }
 
+async function parseJsonOrThrow(response: Response, context: string) {
+  const raw = await response.text();
+
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const preview = raw.replace(/\s+/g, ' ').trim().slice(0, 140);
+    throw new Error(`${context}: API returned non-JSON response. ${preview}`);
+  }
+}
+
 export default function App() {
   const [state, setState] = useState<ConversationState>(EMPTY_STATE);
   const [isTyping, setIsTyping] = useState(false);
@@ -100,7 +115,7 @@ export default function App() {
     try {
       setSessionsLoading(true);
       const response = await apiFetch('/api/sessions');
-      const data = await response.json();
+      const data = await parseJsonOrThrow(response, 'Failed to load sessions');
       setSessions(data.sessions || []);
     } catch (error: any) {
       setSessionError(error.message || 'Failed to load sessions');
@@ -112,7 +127,7 @@ export default function App() {
   const loadSession = useCallback(async (sessionId: string) => {
     try {
       const response = await apiFetch(`/api/sessions/${sessionId}`);
-      const data = await response.json();
+      const data = await parseJsonOrThrow(response, 'Failed to load session');
       const loadedState: ConversationState = data.session.state;
       const analysis = analyzeLearningStyle(loadedState.nodes);
       setState({ ...loadedState, analysis });
@@ -129,7 +144,7 @@ export default function App() {
         method: 'POST',
         body: JSON.stringify({ title: 'New Session', state: EMPTY_STATE }),
       });
-      const data = await response.json();
+      const data = await parseJsonOrThrow(response, 'Failed to create session');
       const created = data.session as SessionSummary;
       setSessions((prev) => [created, ...prev]);
       setActiveSessionId(created.id);
@@ -197,7 +212,7 @@ export default function App() {
           throw new Error('Invalid session');
         }
 
-        const data = await response.json();
+        const data = await parseJsonOrThrow(response, 'Failed to verify session');
         setUser(data.user);
       } catch {
         localStorage.removeItem(AUTH_TOKEN_KEY);
@@ -268,10 +283,12 @@ export default function App() {
         body: JSON.stringify(payload),
       });
 
-      const data = await parseJsonSafely(response);
       if (!response.ok) {
+        const data = await parseJsonSafely(response);
         throw new Error((data && data.error) || (await parseApiError(response, 'Authentication failed')));
       }
+
+      const data = await parseJsonOrThrow(response, 'Authentication failed');
 
       localStorage.setItem(AUTH_TOKEN_KEY, data.token);
       setToken(data.token);
@@ -313,10 +330,12 @@ export default function App() {
         body: JSON.stringify({ email: normalizedEmail, password: authPassword }),
       });
 
-      const data = await parseJsonSafely(response);
       if (!response.ok) {
+        const data = await parseJsonSafely(response);
         throw new Error((data && data.error) || (await parseApiError(response, 'Reset password failed')));
       }
+
+      const data = await parseJsonOrThrow(response, 'Reset password failed');
 
       localStorage.setItem(AUTH_TOKEN_KEY, data.token);
       setToken(data.token);
@@ -428,7 +447,7 @@ export default function App() {
         body: JSON.stringify({ history, content, provider }),
       });
 
-      const result = await response.json();
+      const result = await parseJsonOrThrow(response, 'Chat request failed');
       const modelContent = result.text || "I'm sorry, I couldn't generate a response.";
       const suggestions: Suggestion[] = result.suggestions || [];
 
